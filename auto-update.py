@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
 AI Builders Digest — 自动更新脚本
-每天下午2点执行：
-1. 从 GitHub 拉取最新 feed 数据（tweets, podcasts, blogs）
-2. 生成可视化 HTML 页面
-3. 推送到 GitHub Pages
-4. 发送企微群通知
+每周一和周五早上9点执行（非节假日）：
+1. 检查是否为节假日（节假日跳过）
+2. 检查 GitHub Token 是否有效（过期则通过企微通知更换）
+3. 从 GitHub 拉取最新 feed 数据（tweets, podcasts, blogs）
+4. 过滤上次推送以来的新内容（周一取周五~周一，周五取周一~周五）
+5. 生成可视化 HTML 页面
+6. 推送到 GitHub Pages
+7. 发送企微群通知
 """
 
 import json
@@ -14,7 +17,7 @@ import urllib.error
 import subprocess
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 
 # ============================================================================
@@ -25,8 +28,14 @@ REPO_DIR = Path(__file__).parent
 GITHUB_REPO = "https://github.com/eagergogogo/ai-digest.git"
 GITHUB_PAGES_URL = "https://eagergogogo.github.io/ai-digest/"
 
-# 企微 Webhook（只推送到【数学小天才】群）
-WECOM_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=786b1746-0c53-4e25-990d-722e62146d84"
+# 企微 Webhook（从环境变量读取，安全起见不硬编码）
+WECOM_WEBHOOK = os.environ.get(
+    "WECOM_WEBHOOK",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=786b1746-0c53-4e25-990d-722e62146d84"
+)
+
+# 运行环境检测（github-actions / local）
+RUN_ENV = os.environ.get("RUN_ENV", "local")
 
 # Feed 数据源（来自 follow-builders 中央仓库）
 FEED_X_URL = "https://raw.githubusercontent.com/zarazhangrui/follow-builders/main/feed-x.json"
@@ -35,6 +44,59 @@ FEED_BLOGS_URL = "https://raw.githubusercontent.com/zarazhangrui/follow-builders
 
 # GitHub Token（从环境变量读取，安全起见不硬编码）
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+
+# ============================================================================
+# 2026 年法定节假日 & 调休上班日（国务院发布）
+# ============================================================================
+
+# 法定假日（这些天不执行）
+HOLIDAYS_2026 = {
+    # 元旦: 1月1日-3日
+    date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3),
+    # 春节: 2月15日-23日
+    date(2026, 2, 15), date(2026, 2, 16), date(2026, 2, 17),
+    date(2026, 2, 18), date(2026, 2, 19), date(2026, 2, 20),
+    date(2026, 2, 21), date(2026, 2, 22), date(2026, 2, 23),
+    # 清明节: 4月4日-6日
+    date(2026, 4, 4), date(2026, 4, 5), date(2026, 4, 6),
+    # 劳动节: 5月1日-5日
+    date(2026, 5, 1), date(2026, 5, 2), date(2026, 5, 3),
+    date(2026, 5, 4), date(2026, 5, 5),
+    # 端午节: 6月19日-21日
+    date(2026, 6, 19), date(2026, 6, 20), date(2026, 6, 21),
+    # 中秋节: 9月25日-27日
+    date(2026, 9, 25), date(2026, 9, 26), date(2026, 9, 27),
+    # 国庆节: 10月1日-7日
+    date(2026, 10, 1), date(2026, 10, 2), date(2026, 10, 3),
+    date(2026, 10, 4), date(2026, 10, 5), date(2026, 10, 6),
+    date(2026, 10, 7),
+}
+
+# 调休上班日（这些周末要上班，正常执行）
+WORKDAYS_2026 = {
+    date(2026, 1, 4),   # 元旦调休，周日上班
+    date(2026, 2, 14),  # 春节调休，周六上班
+    date(2026, 2, 28),  # 春节调休，周六上班
+    date(2026, 5, 9),   # 劳动节调休，周六上班
+    date(2026, 9, 20),  # 国庆调休，周日上班
+    date(2026, 10, 10), # 国庆调休，周六上班
+}
+
+
+def is_workday(d=None):
+    """判断是否为工作日（考虑法定节假日和调休）"""
+    if d is None:
+        d = date.today()
+    # 调休上班日 → 算工作日
+    if d in WORKDAYS_2026:
+        return True
+    # 法定假日 → 不算工作日
+    if d in HOLIDAYS_2026:
+        return False
+    # 周末 → 不算工作日
+    if d.weekday() >= 5:  # 5=周六, 6=周日
+        return False
+    return True
 
 # ============================================================================
 # 工具函数
@@ -77,7 +139,7 @@ def send_wecom(content):
         log(f"❌ 企微发送失败: {e}")
 
 def git_push(commit_msg):
-    """推送到 GitHub"""
+    """推送到 GitHub（兼容本地和 GitHub Actions 环境）"""
     os.chdir(REPO_DIR)
     try:
         subprocess.run(["git", "add", "-A"], check=True, capture_output=True)
@@ -90,32 +152,54 @@ def git_push(commit_msg):
 
         subprocess.run(["git", "commit", "-m", commit_msg], check=True, capture_output=True)
 
-        # 设置带 token 的 remote URL
-        if GITHUB_TOKEN:
-            auth_url = f"https://eagergogogo:{GITHUB_TOKEN}@github.com/eagergogogo/ai-digest.git"
-            subprocess.run(["git", "remote", "set-url", "origin", auth_url], check=True, capture_output=True)
+        if RUN_ENV == "github-actions":
+            # GitHub Actions 中已通过 checkout action 的 token 配置好认证
+            subprocess.run(["git", "push"], check=True, capture_output=True, timeout=60)
+        else:
+            # 本地环境：设置带 token 的 remote URL
+            if GITHUB_TOKEN:
+                auth_url = f"https://eagergogogo:{GITHUB_TOKEN}@github.com/eagergogogo/ai-digest.git"
+                subprocess.run(["git", "remote", "set-url", "origin", auth_url], check=True, capture_output=True)
 
-        subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True, timeout=60)
+            subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True, timeout=60)
 
-        # 推送后清除 token（安全）
-        subprocess.run(["git", "remote", "set-url", "origin", GITHUB_REPO], check=True, capture_output=True)
+            # 推送后清除 token（安全）
+            subprocess.run(["git", "remote", "set-url", "origin", GITHUB_REPO], check=True, capture_output=True)
 
         log("✅ GitHub 推送成功")
         return True
     except subprocess.CalledProcessError as e:
         log(f"❌ Git 推送失败: {e.stderr.decode() if e.stderr else e}")
-        # 确保清除 token
-        subprocess.run(["git", "remote", "set-url", "origin", GITHUB_REPO], capture_output=True)
+        if RUN_ENV != "github-actions":
+            # 确保清除 token
+            subprocess.run(["git", "remote", "set-url", "origin", GITHUB_REPO], capture_output=True)
         return False
 
 # ============================================================================
 # 过滤最近24小时的内容
 # ============================================================================
 
-def filter_recent(feed_data, hours=48):
-    """过滤最近N小时内的内容（默认48小时，确保不遗漏）"""
+def get_lookback_hours():
+    """根据今天是周几决定回溯时间（覆盖上次推送到现在的区间）
+    - 周一：回溯 72 小时（上周五早9点 → 周一早9点）
+    - 周五：回溯 96 小时（周一早9点 → 周五早9点）
+    """
+    today = date.today()
+    if today.weekday() == 0:  # 周一
+        return 72   # 覆盖周五、周六、周日
+    elif today.weekday() == 4:  # 周五
+        return 96   # 覆盖周一、周二、周三、周四
+    return 96  # 兜底（正常不会走到）
+
+
+def filter_recent(feed_data, hours=None):
+    """过滤上次推送以来的新内容（周一取72h，周五取96h）"""
+    if hours is None:
+        hours = get_lookback_hours()
+
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     cutoff_str = cutoff.isoformat() + "Z"
+    cutoff_date = cutoff.strftime("%Y-%m-%d")
 
     if not feed_data:
         return []
@@ -592,30 +676,128 @@ def generate_html(tweets_data, podcasts_data, blogs_data):
 # 主流程
 # ============================================================================
 
+def check_github_token():
+    """检测 GitHub Token 是否有效，过期则通过企微通知"""
+    if not GITHUB_TOKEN:
+        log("⚠️  未设置 GITHUB_TOKEN")
+        if RUN_ENV == "github-actions":
+            send_wecom("## ⚠️ AI Digest Token 异常\n\n未检测到 GitHub Token，请在 GitHub 仓库 Settings → Secrets 中更新 `GH_PAT`。")
+        else:
+            send_wecom("## ⚠️ AI Digest Token 异常\n\n未检测到 GitHub Token，请更新：\n\n"
+                       "1. 打开 [GitHub Token 设置](https://github.com/settings/tokens)\n"
+                       "2. 生成新 Token（勾选 `repo` 权限）\n"
+                       "3. 编辑 `~/Library/LaunchAgents/com.eagergogogo.ai-digest.plist`\n"
+                       "4. 替换 `GITHUB_TOKEN` 的值\n"
+                       "5. 执行 `launchctl unload` + `launchctl load` 重载任务\n\n"
+                       "或直接联系 CodeBuddy 帮你更新 🤖")
+        return False
+
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"token {GITHUB_TOKEN}",
+                "User-Agent": "AI-Digest-Bot/1.0"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            log("✅ GitHub Token 验证通过")
+            return True
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            log("❌ GitHub Token 已过期或无效")
+            if RUN_ENV == "github-actions":
+                send_wecom("## 🔑 AI Digest — GitHub Token 已过期\n\n"
+                           "自动更新因 Token 失效暂停，请尽快更换：\n\n"
+                           "**操作步骤：**\n"
+                           "1. 打开 [GitHub Token 设置](https://github.com/settings/tokens)\n"
+                           "2. 生成新 Token（勾选 `repo` + `workflow` 权限）\n"
+                           "3. 进入仓库 [Settings → Secrets](https://github.com/eagergogogo/ai-digest/settings/secrets/actions)\n"
+                           "4. 更新 `GH_PAT` 的值\n\n"
+                           "完成后会自动恢复每周更新 ✅")
+            else:
+                send_wecom("## 🔑 AI Digest — GitHub Token 已过期\n\n"
+                           "自动更新因 Token 失效暂停，请尽快更换：\n\n"
+                           "**操作步骤：**\n"
+                           "1. 打开 [GitHub Token 设置](https://github.com/settings/tokens)\n"
+                           "2. 点击 **Generate new token (classic)**\n"
+                           "3. 勾选 `repo` 权限，设置有效期\n"
+                           "4. 复制新 Token\n"
+                           "5. 编辑文件 `~/Library/LaunchAgents/com.eagergogogo.ai-digest.plist`\n"
+                           "6. 将 `<string>ghp_xxx</string>` 中的旧 Token 替换为新的\n"
+                           "7. 终端执行：\n"
+                           "> `launchctl unload ~/Library/LaunchAgents/com.eagergogogo.ai-digest.plist`\n"
+                           "> `launchctl load ~/Library/LaunchAgents/com.eagergogogo.ai-digest.plist`\n\n"
+                           "完成后会自动恢复每日更新 ✅")
+            return False
+        else:
+            log(f"⚠️  GitHub API 请求异常: HTTP {e.code}")
+            return True  # 非 401 错误可能是网络问题，继续执行
+    except Exception as e:
+        log(f"⚠️  Token 检测请求失败: {e}")
+        return True  # 网络问题不阻塞执行
+
+
+def get_beijing_now():
+    """获取北京时间（兼容 GitHub Actions 的 UTC 环境）"""
+    utc_now = datetime.utcnow()
+    return utc_now + timedelta(hours=8)
+
+
 def main():
+    # 确保日志目录存在
+    log_dir = REPO_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
+
     log("🚀 AI Builders Digest 自动更新开始")
-    today = datetime.now()
+    log(f"📍 运行环境: {RUN_ENV}")
+
+    # 使用北京时间（GitHub Actions 运行在 UTC）
+    today = get_beijing_now()
     date_short = today.strftime("%Y.%m.%d")
 
+    # Step 0: 检查今天是否为节假日
+    if today.date() in HOLIDAYS_2026:
+        log(f"📅 今天是 {today.strftime('%Y-%m-%d')}，法定节假日，跳过更新")
+        return
+
+    weekday_name = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][today.weekday()]
+    log(f"📅 今天是{weekday_name}（北京时间 {today.strftime('%Y-%m-%d %H:%M')}），继续执行更新")
+
+    # Step 0.5: 检查 GitHub Token 是否有效
+    if not check_github_token():
+        log("⛔ Token 无效，已通过企微通知，本次跳过更新")
+        return
+
     # Step 1: 拉取最新 feed 数据
-    log("📡 正在拉取最新 feed 数据...")
+    lookback = get_lookback_hours()
+    period_desc = "周末" if today.weekday() == 0 else "昨天"
+    log(f"📡 正在拉取最新 feed 数据（回溯 {lookback} 小时，获取{period_desc}的内容）...")
     feed_x = fetch_json(FEED_X_URL)
     feed_podcasts = fetch_json(FEED_PODCASTS_URL)
     feed_blogs = fetch_json(FEED_BLOGS_URL)
 
-    tweets_data = feed_x.get("x", []) if feed_x else []
-    podcasts_data = feed_podcasts.get("podcasts", []) if feed_podcasts else []
-    blogs_data = feed_blogs.get("blogs", []) if feed_blogs else []
+    # 先取全量，再过滤时间
+    tweets_all = feed_x.get("x", []) if feed_x else []
+    podcasts_all = feed_podcasts.get("podcasts", []) if feed_podcasts else []
+    blogs_all = feed_blogs.get("blogs", []) if feed_blogs else []
 
-    log(f"📊 获取到: {len(tweets_data)} builders, {len(podcasts_data)} podcasts, {len(blogs_data)} blogs")
+    log(f"📊 全量数据: {len(tweets_all)} builders, {len(podcasts_all)} podcasts, {len(blogs_all)} blogs")
+
+    # 过滤只保留昨天/周末的最新内容
+    tweets_data = filter_recent(tweets_all, lookback)
+    podcasts_data = filter_recent(podcasts_all, lookback)
+    blogs_data = filter_recent(blogs_all, lookback)
+
+    log(f"🔍 过滤后（{period_desc}）: {len(tweets_data)} builders, {len(podcasts_data)} podcasts, {len(blogs_data)} blogs")
 
     # Step 2: 生成 HTML
     log("🎨 正在生成 HTML 页面...")
     html = generate_html(tweets_data, podcasts_data, blogs_data)
 
     if html is None:
-        log("⚠️  没有新内容，跳过更新")
-        send_wecom(f"## ℹ️ AI Digest — {date_short}\n\n今日暂无新内容更新。\n\n📖 [查看往期内容 →]({GITHUB_PAGES_URL})")
+        log(f"⚠️  {period_desc}没有新内容，跳过更新")
+        send_wecom(f"## ℹ️ AI Digest — {date_short}\n\n{period_desc}暂无新内容更新。\n\n📖 [查看往期内容 →]({GITHUB_PAGES_URL})")
         return
 
     # Step 3: 写入文件
@@ -632,6 +814,7 @@ def main():
     log("💬 正在发送企微通知...")
 
     # 构建摘要要点
+    num_total_tweets = sum(len(b.get("tweets", [])) for b in tweets_data)
     highlights = []
     for i, builder in enumerate(tweets_data[:3]):
         name = builder.get("name", "")
@@ -645,14 +828,14 @@ def main():
 
 > 追踪真正在构建 AI 的人，而不是转述者
 
-**今日数据：** {len(tweets_data)} 位 Builders · {sum(len(b.get('tweets',[])) for b in tweets_data)} 条推文 · {len(podcasts_data)} 期播客 · {len(blogs_data)} 篇博客
+**{period_desc}更新：** {len(tweets_data)} 位 Builders · {num_total_tweets} 条推文 · {len(podcasts_data)} 期播客 · {len(blogs_data)} 篇博客
 
 {highlights_text}
 
 📖 [点击查看完整资讯 →]({GITHUB_PAGES_URL})
 
 ---
-*由 AI Builders Digest 自动生成 · 每日下午 2 点更新*"""
+*由 AI Builders Digest 自动生成 · 每周一、周五上午 9:30 更新*"""
 
     send_wecom(wecom_msg)
 

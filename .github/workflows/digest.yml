@@ -1,0 +1,44 @@
+name: AI Builders Digest 自动更新
+
+on:
+  # 定时触发：北京时间 周一和周五 09:30 = UTC 01:30
+  schedule:
+    - cron: '30 1 * * 1'   # 每周一 UTC 01:30 = 北京时间 09:30
+    - cron: '30 1 * * 5'   # 每周五 UTC 01:30 = 北京时间 09:30
+  # 支持手动触发（方便调试）
+  workflow_dispatch:
+
+# 授权：允许 Actions 推送代码到仓库
+permissions:
+  contents: write
+
+jobs:
+  update-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取仓库代码
+      - name: 📥 Checkout 仓库
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      # 2. 配置 Python 环境
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 3. 配置 Git 身份（用于提交）
+      - name: 🔧 配置 Git
+        run: |
+          git config user.name "AI Digest Bot"
+          git config user.email "ai-digest-bot@users.noreply.github.com"
+
+      # 4. 执行自动更新脚本
+      - name: 🚀 运行 auto-update.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          WECOM_WEBHOOK: ${{ secrets.WECOM_WEBHOOK }}
+          RUN_ENV: github-actions
+        run: python3 auto-update.py
