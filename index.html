@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Builders Digest — 2026.03.26</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.06);
+    --text: #e8e8ed;
+    --text-dim: #8888a0;
+    --accent-blue: #4f8fff;
+    --accent-purple: #a855f7;
+    --accent-green: #22d3a7;
+    --accent-orange: #f59e0b;
+    --accent-pink: #ec4899;
+    --accent-red: #ef4444;
+    --highlight-bg: rgba(79,143,255,0.1);
+    --highlight-border: rgba(79,143,255,0.3);
+    --gradient-1: linear-gradient(135deg, #4f8fff 0%, #a855f7 100%);
+    --gradient-2: linear-gradient(135deg, #22d3a7 0%, #4f8fff 100%);
+    --gradient-3: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+    line-height: 1.7;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== Animated Background ===== */
+  .bg-effects {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  }
+  .bg-effects .orb {
+    position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.15;
+    animation: float 20s ease-in-out infinite;
+  }
+  .bg-effects .orb:nth-child(1) {
+    width: 600px; height: 600px; background: #4f8fff;
+    top: -200px; right: -100px; animation-delay: 0s;
+  }
+  .bg-effects .orb:nth-child(2) {
+    width: 500px; height: 500px; background: #a855f7;
+    bottom: -150px; left: -100px; animation-delay: -7s;
+  }
+  .bg-effects .orb:nth-child(3) {
+    width: 400px; height: 400px; background: #22d3a7;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    animation-delay: -14s;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -40px) scale(1.05); }
+    50% { transform: translate(-20px, 20px) scale(0.95); }
+    75% { transform: translate(40px, 30px) scale(1.02); }
+  }
+
+  /* ===== Layout ===== */
+  .container {
+    position: relative; z-index: 1;
+    max-width: 900px; margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    text-align: center; margin-bottom: 56px;
+    animation: fadeUp 0.8s ease;
+  }
+  .header .date-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 100px; padding: 8px 20px;
+    font-size: 13px; color: var(--text-dim); margin-bottom: 24px;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .header .date-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent-green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .header h1 {
+    font-size: 48px; font-weight: 900; line-height: 1.1;
+    background: var(--gradient-1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+  .header .subtitle {
+    font-size: 17px; color: var(--text-dim); font-weight: 400;
+    max-width: 500px; margin: 0 auto;
+  }
+
+  /* ===== Stats Bar ===== */
+  .stats-bar {
+    display: flex; gap: 12px; justify-content: center;
+    margin-bottom: 48px; flex-wrap: wrap;
+    animation: fadeUp 0.8s ease 0.1s both;
+  }
+  .stat-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 20px;
+  }
+  .stat-chip .stat-icon {
+    font-size: 20px;
+  }
+  .stat-chip .stat-num {
+    font-size: 22px; font-weight: 800;
+    background: var(--gradient-1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .stat-chip .stat-label {
+    font-size: 13px; color: var(--text-dim);
+  }
+
+  /* ===== Section ===== */
+  .section {
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease both;
+  }
+  .section:nth-child(3) { animation-delay: 0.15s; }
+  .section:nth-child(4) { animation-delay: 0.25s; }
+  .section:nth-child(5) { animation-delay: 0.35s; }
+
+  .section-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width: 44px; height: 44px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .section-icon.blog { background: linear-gradient(135deg, rgba(79,143,255,0.2), rgba(168,85,247,0.2)); }
+  .section-icon.twitter { background: linear-gradient(135deg, rgba(34,211,167,0.2), rgba(79,143,255,0.2)); }
+  .section-icon.podcast { background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(236,72,153,0.2)); }
+
+  .section-title {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+  }
+  .section-count {
+    font-size: 12px; color: var(--text-dim);
+    background: var(--surface2); padding: 4px 12px;
+    border-radius: 100px; margin-left: auto;
+  }
+
+  /* ===== Card ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    border-color: rgba(79,143,255,0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .card-author {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 16px;
+  }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; flex-shrink: 0;
+    color: white;
+  }
+  .author-info .name {
+    font-size: 16px; font-weight: 700;
+  }
+  .author-info .role {
+    font-size: 13px; color: var(--text-dim);
+  }
+
+  .card-body {
+    font-size: 15px; line-height: 1.8; color: #c8c8d8;
+  }
+  .card-body p { margin-bottom: 12px; }
+  .card-body p:last-child { margin-bottom: 0; }
+
+  /* ===== Highlight ===== */
+  .highlight {
+    background: linear-gradient(90deg, rgba(79,143,255,0.12) 0%, rgba(168,85,247,0.08) 100%);
+    border-left: 3px solid var(--accent-blue);
+    padding: 14px 18px;
+    border-radius: 0 12px 12px 0;
+    margin: 14px 0;
+    font-weight: 500;
+    color: #e0e0f0;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .highlight.green {
+    background: linear-gradient(90deg, rgba(34,211,167,0.1) 0%, rgba(34,211,167,0.03) 100%);
+    border-left-color: var(--accent-green);
+  }
+  .highlight.orange {
+    background: linear-gradient(90deg, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 100%);
+    border-left-color: var(--accent-orange);
+  }
+  .highlight.pink {
+    background: linear-gradient(90deg, rgba(236,72,153,0.1) 0%, rgba(236,72,153,0.03) 100%);
+    border-left-color: var(--accent-pink);
+  }
+  .highlight.purple {
+    background: linear-gradient(90deg, rgba(168,85,247,0.1) 0%, rgba(168,85,247,0.03) 100%);
+    border-left-color: var(--accent-purple);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; padding: 4px 10px;
+    border-radius: 6px; margin-bottom: 12px;
+  }
+  .tag.hot { background: rgba(239,68,68,0.15); color: #f87171; }
+  .tag.new { background: rgba(34,211,167,0.15); color: #34d399; }
+  .tag.insight { background: rgba(168,85,247,0.15); color: #c084fc; }
+  .tag.product { background: rgba(79,143,255,0.15); color: #93bbff; }
+  .tag.trend { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  .engagement {
+    display: flex; gap: 16px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim);
+  }
+  .engagement span { display: flex; align-items: center; gap: 5px; }
+
+  .link-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 14px; padding: 8px 16px;
+    background: rgba(79,143,255,0.1);
+    border: 1px solid rgba(79,143,255,0.2);
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    color: var(--accent-blue); text-decoration: none;
+    transition: all 0.2s;
+  }
+  .link-btn:hover {
+    background: rgba(79,143,255,0.2);
+    transform: translateX(2px);
+  }
+
+  /* ===== Podcast Card Special ===== */
+  .podcast-card {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(245,158,11,0.04) 100%);
+    border: 1px solid rgba(245,158,11,0.15);
+  }
+  .podcast-card:hover {
+    border-color: rgba(245,158,11,0.3);
+  }
+
+  /* ===== Blog Card Special ===== */
+  .blog-card {
+    background: linear-gradient(135deg, var(--surface) 0%, rgba(79,143,255,0.04) 100%);
+    border: 1px solid rgba(79,143,255,0.15);
+  }
+  .blog-card:hover {
+    border-color: rgba(79,143,255,0.3);
+  }
+
+  /* ===== Key Takeaways ===== */
+  .takeaways {
+    background: linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(79,143,255,0.05) 100%);
+    border: 1px solid rgba(168,85,247,0.2);
+    border-radius: 20px; padding: 32px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s ease 0.1s both;
+  }
+  .takeaways h2 {
+    font-size: 20px; font-weight: 800; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .takeaway-item {
+    display: flex; gap: 14px; margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .takeaway-item:last-child { margin-bottom: 0; }
+  .takeaway-num {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; flex-shrink: 0;
+    background: var(--gradient-1); color: white;
+  }
+  .takeaway-text {
+    font-size: 15px; line-height: 1.6; color: #d0d0e0;
+  }
+  .takeaway-text strong {
+    color: #fff;
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    text-align: center; padding-top: 40px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px;
+    animation: fadeUp 0.8s ease 0.5s both;
+  }
+  .footer a {
+    color: var(--accent-blue); text-decoration: none;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    .container { padding: 24px 16px 60px; }
+    .header h1 { font-size: 32px; }
+    .stats-bar { gap: 8px; }
+    .stat-chip { padding: 10px 14px; }
+    .stat-chip .stat-num { font-size: 18px; }
+    .card { padding: 20px; }
+    .section-title { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-effects">
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+</div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="date-badge"><div class="dot"></div> 2026年3月26日 · 星期四</div>
+    <h1>AI Builders Digest</h1>
+    <p class="subtitle">追踪真正在构建 AI 的人，而不是转述者</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-chip">
+      <span class="stat-icon">🐦</span>
+      <span class="stat-num">18</span>
+      <span class="stat-label">Builders</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-icon">💬</span>
+      <span class="stat-num">32</span>
+      <span class="stat-label">推文</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-icon">🎙️</span>
+      <span class="stat-num">1</span>
+      <span class="stat-label">播客</span>
+    </div>
+    <div class="stat-chip">
+      <span class="stat-icon">📝</span>
+      <span class="stat-num">1</span>
+      <span class="stat-label">博客</span>
+    </div>
+  </div>
+
+  <!-- Key Takeaways -->
+  <div class="takeaways">
+    <h2>⚡ 今日要点速览</h2>
+    <div class="takeaway-item">
+      <div class="takeaway-num">1</div>
+      <div class="takeaway-text"><strong>Claude Code Auto Mode 发布</strong> — Anthropic 推出基于分类器的自动权限审批，误报率仅 0.4%，现已对 Team 用户开放</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">2</div>
+      <div class="takeaway-text"><strong>Karpathy 揭示 LLM 记忆缺陷</strong> — 所有 LLM 的个性化记忆都过度依赖历史信息，一个随意问题会被当作"深层兴趣"反复提及</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">3</div>
+      <div class="takeaway-text"><strong>杰文斯悖论实时上演</strong> — Box CEO 论证 AI 降低软件成本后，企业反而会启动更多项目，工程师需求不减反增</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">4</div>
+      <div class="takeaway-text"><strong>iMessage 成为 Claude 新通道</strong> — Anthropic 工程师 Thariq 宣布可通过 iMessage 与 Claude 交互，引爆社区</div>
+    </div>
+    <div class="takeaway-item">
+      <div class="takeaway-num">5</div>
+      <div class="takeaway-text"><strong>生物学的"Waymo 时刻"</strong> — Ginkgo Bioworks CEO 与 OpenAI 合作，AI 科学家 6 轮实验超越人类最优基准 40%</div>
+    </div>
+  </div>
+
+  <!-- ===== BLOG SECTION ===== -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon blog">📝</div>
+      <div class="section-title">官方博客</div>
+      <div class="section-count">1 篇新文章</div>
+    </div>
+
+    <div class="card blog-card">
+      <span class="tag product">产品发布</span>
+      <div class="card-author">
+        <div class="avatar" style="background: var(--gradient-1);">A</div>
+        <div class="author-info">
+          <div class="name">Anthropic Engineering</div>
+          <div class="role">Claude Code Auto Mode: 更安全的自主权限管理</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>Anthropic 推出 Claude Code 全新 <strong>Auto Mode</strong>，在完全手动审批和跳过所有权限之间找到了精妙的平衡点。</p>
+        <div class="highlight">
+          核心机制：用<strong>模型分类器</strong>替代人工审批，采用双层防护 — 输入层检测 prompt 注入攻击，输出层用两阶段分类器（快速单 token 过滤 + 链式推理）评估每个操作是否安全。
+        </div>
+        <p>能拦截的危险行为包括：范围升级（如误删远程 git 分支）、凭证探索、未授权数据外传、绕过安全检查等。被拦截后 Claude 不会停下来等人，而是自动寻找更安全的替代方案。</p>
+        <div class="highlight green">
+          📊 关键数据：真实流量误报率仅 <strong>0.4%</strong>，合成数据外泄攻击漏检率 <strong>5.7%</strong>，真实过度行为漏检率 <strong>17%</strong>（相比完全跳过权限已有巨大提升）。用户实际手动审批时 93% 都会直接通过。
+        </div>
+        <p>现已对 Claude for Team 用户开放。使用 <code>claude --enable-auto-mode</code> 启用，Shift + Tab 进入模式。</p>
+      </div>
+      <a class="link-btn" href="https://www.anthropic.com/engineering/claude-code-auto-mode" target="_blank">阅读原文 →</a>
+    </div>
+  </div>
+
+  <!-- ===== TWITTER SECTION ===== -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon twitter">🐦</div>
+      <div class="section-title">X / Twitter 动态</div>
+      <div class="section-count">18 位 Builders</div>
+    </div>
+
+    <!-- Karpathy -->
+    <div class="card">
+      <span class="tag hot">🔥 热门</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);">AK</div>
+        <div class="author-info">
+          <div class="name">Andrej Karpathy</div>
+          <div class="role">前 OpenAI 联合创始人 · 前 Tesla AI 总监 · 斯坦福 PhD</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>指出所有 LLM 个性化记忆的一个通病：</p>
+        <div class="highlight pink">
+          💡 两个月前随意问过的一个话题，会被模型当作你的<strong>"深层兴趣"不断提及</strong>。这是一种"太努力讨好"的行为。
+        </div>
+        <p>他认为这可能源于训练阶段的偏差 — 训练时上下文信息大多与任务相关，导致模型在推理时过度依赖 RAG 中碰巧出现的任何信息。所有 LLM 都有这个问题，不是某个实现的 bug，而是更深层的训练机制问题。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 16,377</span>
+        <span>🔁 812</span>
+        <span>💬 1,423</span>
+      </div>
+      <a class="link-btn" href="https://x.com/karpathy/status/2036836816654147718" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Aaron Levie -->
+    <div class="card">
+      <span class="tag trend">📈 趋势洞察</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #4f8fff, #3742fa);">AL</div>
+        <div class="author-info">
+          <div class="name">Aaron Levie</div>
+          <div class="role">Box CEO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>发表长文论述<strong>杰文斯悖论</strong>正在实时发生：</p>
+        <div class="highlight orange">
+          🏭 AI 让软件开发成本大幅下降后，企业反而会启动<strong>更多以前负担不起的软件项目</strong>。营销团队会有工程师帮忙自动化流程，生命科学工程师会自动化研究，小企业也会首次雇佣工程师。
+        </div>
+        <div class="highlight purple">
+          🎯 "不要听信不去学工程的建议。<strong>未来世界将由软件构成，理解软件的人将占据最有利的经济位置。</strong>"
+        </div>
+        <p>他强调只要 AI agent 仍需人类理解如何 prompt、如何审查、如何纠正偏离、如何维护系统，人类就仍在管理这些 agent。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 3,113</span>
+        <span>🔁 441</span>
+        <span>💬 167</span>
+      </div>
+      <a class="link-btn" href="https://x.com/levie/status/2036832183131033977" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Claude Official -->
+    <div class="card">
+      <span class="tag product">产品更新</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #d4a574, #c08552);">C</div>
+        <div class="author-info">
+          <div class="name">Claude (官方)</div>
+          <div class="role">Anthropic AI 助手</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight green">
+          📱 Claude 的工作工具集成现已支持移动端！可以在手机上浏览 <strong>Figma 设计</strong>、创建 <strong>Canva 幻灯片</strong>、查看 <strong>Amplitude 数据面板</strong>。
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 16,669</span>
+        <span>🔁 1,240</span>
+        <span>💬 1,057</span>
+      </div>
+      <a class="link-btn" href="https://x.com/claudeai/status/2036850783526719610" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Thariq -->
+    <div class="card">
+      <span class="tag new">🆕 新功能</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">T</div>
+        <div class="author-info">
+          <div class="name">Thariq</div>
+          <div class="role">Anthropic Claude Code 工程师 · 前 YC W20</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight">
+          💬 <strong>iMessage 现已成为 Claude 的可用通道！</strong>可以直接通过 iMessage 与 Claude 交互。
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 1,757</span>
+        <span>🔁 56</span>
+        <span>💬 78</span>
+      </div>
+      <a class="link-btn" href="https://x.com/trq212/status/2036959638646866021" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Cat Wu -->
+    <div class="card">
+      <span class="tag product">产品发布</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #ec4899, #be185d);">CW</div>
+        <div class="author-info">
+          <div class="name">Cat Wu</div>
+          <div class="role">Anthropic Claude Code + Cowork 工程师</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>宣布 <strong>Auto Mode</strong> 是 Claude Code UX 的阶跃式提升，在自主性和安全性之间取得平衡。</p>
+        <div class="highlight green">
+          ✅ "团队<strong>几乎人人日常使用</strong>这个模式。" 现已对 Claude for Team 用户开放，<code>claude --enable-auto-mode</code> 启用。
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 380</span>
+        <span>🔁 29</span>
+        <span>💬 54</span>
+      </div>
+      <a class="link-btn" href="https://x.com/_catwu/status/2036852880624541938" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Ryo Lu -->
+    <div class="card">
+      <span class="tag insight">💎 深度见解</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #22d3a7, #059669);">RL</div>
+        <div class="author-info">
+          <div class="name">Ryo Lu</div>
+          <div class="role">Cursor 设计负责人 · 前 Notion, Stripe</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>认为随着 AI agent 让添加功能变得容易，<strong>设计反而更重要了</strong>：</p>
+        <div class="highlight purple">
+          🎨 "角色不再只是推像素 — 而是决定<strong>什么该存在、如何组合、人类如何保持控制感、智能如何显得清晰可信</strong>。品味、工艺和判断力一直是瓶颈。游戏不在于谁发布最快，而在于谁为人类做出了正确的东西。"
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 439</span>
+        <span>🔁 42</span>
+        <span>💬 26</span>
+      </div>
+      <a class="link-btn" href="https://x.com/ryolu_/status/2036886854805709097" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Guillermo Rauch -->
+    <div class="card">
+      <span class="tag product">产品更新</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #000, #333);">GR</div>
+        <div class="author-info">
+          <div class="name">Guillermo Rauch</div>
+          <div class="role">Vercel CEO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight orange">
+          🏭 "每家公司都将成为 <strong>AI 工厂</strong>，生产单位是 token。"
+        </div>
+        <p>Vercel AI Gateway 新增跨模型、跨供应商的<strong>统一计量功能</strong>，用一个 <code>/v1/report</code> API 调用解决 token 使用追踪和计费难题。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 179</span>
+        <span>🔁 4</span>
+        <span>💬 25</span>
+      </div>
+      <a class="link-btn" href="https://x.com/rauchg/status/2036963706576527623" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Dan Shipper -->
+    <div class="card">
+      <span class="tag insight">💎 深度见解</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">DS</div>
+        <div class="author-info">
+          <div class="name">Dan Shipper</div>
+          <div class="role">Every CEO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>分享了与 Instagram 联合创始人、现 Anthropic Labs 成员 <strong>Mike Krieger</strong> 的深度对话：</p>
+        <div class="highlight">
+          🔄 产品开发规则正被实时改写 — PM 和设计师可以像工程师一样发布软件；最佳产品（如 Claude Code）让用户做到<strong>创造者都没想到的事情</strong>。
+        </div>
+        <div class="highlight pink">
+          ⚠️ Vibe coding 的陷阱：一天内从想法到近乎成品，但过程中<strong>缺少了告诉你"什么不该做"的渐进反馈</strong>。模型擅长添加功能，但可能创造出缺乏连贯性的产品。
+        </div>
+        <p>Anthropic Labs 新产品实验仅由<strong>两人团队</strong>推动（产品/设计 + 工程师）。每 3-6 个月需要推翻产品重新来过。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 118</span>
+        <span>🔁 9</span>
+        <span>💬 14</span>
+      </div>
+      <a class="link-btn" href="https://x.com/danshipper/status/2036827118915485942" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Garry Tan -->
+    <div class="card">
+      <span class="tag trend">📈 趋势洞察</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #f97316, #ea580c);">GT</div>
+        <div class="author-info">
+          <div class="name">Garry Tan</div>
+          <div class="role">Y Combinator CEO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight orange">
+          🚀 "新时代最重要的是要<strong>大量使用 token 来创造出色作品</strong>。只要你有 agency 和品味，结果就会非凡。"
+        </div>
+        <p>他认为 AI token 额度是<strong>降低创业门槛</strong>的关键 — 无论你在哪里长大、家庭是否有钱。Token credits 让创业对所有人开放。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 38</span>
+        <span>🔁 2</span>
+        <span>💬 14</span>
+      </div>
+      <a class="link-btn" href="https://x.com/garrytan/status/2037055498974093629" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Amjad Masad -->
+    <div class="card">
+      <span class="tag new">🆕 新信号</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">AM</div>
+        <div class="author-info">
+          <div class="name">Amjad Masad</div>
+          <div class="role">Replit CEO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight green">
+          🍎 Apple 对用 Replit 制作的应用<strong>审核通过率很高</strong>，Apple 似乎对 AI 生成的应用持积极态度。
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 130</span>
+        <span>🔁 4</span>
+        <span>💬 20</span>
+      </div>
+      <a class="link-btn" href="https://x.com/amasad/status/2037004600893472936" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Peter Yang -->
+    <div class="card">
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">PY</div>
+        <div class="author-info">
+          <div class="name">Peter Yang</div>
+          <div class="role">Roblox 产品经理 · 14万+读者</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>分享实用教程：Meta VP 如何构建一个 <strong>AI Skill</strong> 来用自己的风格审阅文档。</p>
+        <div class="highlight">
+          ⏰ "科技公司最大的时间浪费不是会议或 Slack，而是<strong>试图预测领导想要什么</strong>。"
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 114</span>
+        <span>🔁 10</span>
+        <span>💬 6</span>
+      </div>
+      <a class="link-btn" href="https://x.com/petergyang/status/2036812870365917284" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Nan Yu -->
+    <div class="card">
+      <span class="tag insight">💎 设计思考</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">NY</div>
+        <div class="author-info">
+          <div class="name">Nan Yu</div>
+          <div class="role">Linear 产品负责人</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight purple">
+          🎯 "我真希望我们能回归设计的本义 — <strong>'为实现特定目的而安排元素的计划'</strong>。我们过度沉迷于安排元素本身，却忘了目的。"
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 28</span>
+        <span>🔁 1</span>
+        <span>💬 3</span>
+      </div>
+      <a class="link-btn" href="https://x.com/thenanyu/status/2037042617213481410" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Matt Turck -->
+    <div class="card">
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #64748b, #475569);">MT</div>
+        <div class="author-info">
+          <div class="name">Matt Turck</div>
+          <div class="role">FirstMark Capital 合伙人 · MAD Podcast 主持</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight pink">
+          😄 VC 在公司董事会角色的演变：<br>
+          <strong>2016</strong>：治理、指导、支持<br>
+          <strong>2021</strong>：啦啦队<br>
+          <strong>2026</strong>：Anthropic 和 OpenAI 的销售代表
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 139</span>
+        <span>🔁 4</span>
+        <span>💬 16</span>
+      </div>
+      <a class="link-btn" href="https://x.com/mattturck/status/2036747586468499889" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Peter Steinberger -->
+    <div class="card">
+      <span class="tag product">产品更新</span>
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">PS</div>
+        <div class="author-info">
+          <div class="name">Peter Steinberger</div>
+          <div class="role">OpenClaw 创始人 · "ClawFather"</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>发布 <strong>OpenClaw 新测试版</strong>，改进了 MS Teams 集成和 OpenWebUI 支持。</p>
+      </div>
+      <div class="engagement">
+        <span>❤️ 799</span>
+        <span>🔁 67</span>
+        <span>💬 62</span>
+      </div>
+      <a class="link-btn" href="https://x.com/steipete/status/2036824286988816737" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Swyx -->
+    <div class="card">
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #22d3a7, #14b8a6);">S</div>
+        <div class="author-info">
+          <div class="name">Swyx</div>
+          <div class="role">AI Engineer 活动组织者 · Cognition · Latent Space 播客</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>透露运营首届国际 <strong>AI Engineer 大会</strong>困难重重 — 展位和门票全部售罄但仍未盈利。</p>
+        <div class="highlight">
+          💸 "活动的<strong>成本和后勤复杂性是超线性增长</strong>的，我真的很讨厌这一点。" 伦敦站将在两周后举行。
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 74</span>
+        <span>🔁 3</span>
+        <span>💬 15</span>
+      </div>
+      <a class="link-btn" href="https://x.com/swyx/status/2036918746854678830" target="_blank">查看原推 →</a>
+    </div>
+
+    <!-- Aditya Agarwal -->
+    <div class="card">
+      <div class="card-author">
+        <div class="avatar" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">AA</div>
+        <div class="author-info">
+          <div class="name">Aditya Agarwal</div>
+          <div class="role">South Park Commons GP · 前 Facebook 早期工程师 · 前 Dropbox CTO</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p>分享 Hill Valley Forum 的观察：硬科技/深科技领域能量爆棚 — 无人机、能源、机器人、原子+比特。</p>
+        <div class="highlight green">
+          🇺🇸 "三方共舞：<strong>建造者 + 投资人 + 政策制定者</strong>。华盛顿/政界的支持非常真实，每位国会议员和参议员都想参与建设。"
+        </div>
+      </div>
+      <div class="engagement">
+        <span>❤️ 122</span>
+        <span>🔁 16</span>
+        <span>💬 5</span>
+      </div>
+      <a class="link-btn" href="https://x.com/adityaag/status/2036824253970923925" target="_blank">查看原推 →</a>
+    </div>
+
+  </div>
+
+  <!-- ===== PODCAST SECTION ===== -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon podcast">🎙️</div>
+      <div class="section-title">播客精选</div>
+      <div class="section-count">1 期新节目</div>
+    </div>
+
+    <div class="card podcast-card">
+      <span class="tag hot">🔥 重磅</span>
+      <div class="card-author">
+        <div class="avatar" style="background: var(--gradient-3);">🎙️</div>
+        <div class="author-info">
+          <div class="name">Training Data</div>
+          <div class="role">Biology's Waymo Moment: Ginkgo Bioworks' Jason Kelly</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="highlight orange">
+          🧬 <strong>核心观点：</strong>AI 将从根本上改变实验科学的运作方式，这是过去 30 年科技浪潮中<strong>第一次真正影响到生物技术和制药行业</strong>的变革。
+        </div>
+
+        <p>Ginkgo Bioworks CEO Jason Kelly 创办公司已 18 年，目标是让生物编程像写代码一样简单。他用一个精彩的<strong>交通类比</strong>解释自主实验室：</p>
+
+        <div class="highlight purple">
+          🚇 低灵活性 + 高自动化 = <strong>地铁</strong><br>
+          🚗 高灵活性 + 低自动化 = <strong>汽车</strong><br>
+          🤖 高灵活性 + 高自动化 = <strong>自动驾驶</strong>（AI 带来的）<br><br>
+          科学实验室 99% 的工作仍在实验台上手工完成，就像 99% 的出行仍靠汽车。
+        </div>
+
+        <p>与 OpenAI 合作的突破性项目：让推理模型设计并运行生化实验，经过四轮迭代就超越斯坦福最优基准，<strong>六轮后超出 40%</strong>。</p>
+
+        <div class="highlight green">
+          🔬 关键不是 AI 更聪明，而是三大不公平优势：<br>
+          <strong>1.</strong> 100 个 AI 科学家每天共享实验数据（vs 人类每 1-2 年通过论文交流）<br>
+          <strong>2.</strong> 设备利用率从 &lt;20% 提升到 70%，实验成本翻转为以试剂为主<br>
+          <strong>3.</strong> 24 小时不间断运转
+        </div>
+
+        <p>Jason 还透露 Ginkgo 已向美国能源部交付 97 台机器人用于 <strong>Project Genesis</strong>（AI for Science 国家计划）。他的终极愿景：</p>
+
+        <div class="highlight pink">
+          🌟 "如果回到 1960 年代，你告诉人们'孩子们会编程计算机'，他们会说你疯了。我相信如果降低科学实验的成本，<strong>每个人都会想成为科学家</strong>。"
+        </div>
+
+        <p>他对消费级生物技术也充满期待：GLP-1 药物是"<strong>iPhone 以来最好的发明</strong>"，未来生物技术将不仅治疗疾病，还将延长寿命、改善生活质量。</p>
+      </div>
+      <a class="link-btn" href="https://youtube.com/watch?v=g45Alfg7diw" target="_blank">观看完整节目 →</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Generated through the <a href="https://github.com/zarazhangrui/follow-builders" target="_blank">Follow Builders</a> skill</p>
+    <p style="margin-top: 8px;">追踪真正在构建 AI 的人 · 数据更新于 2026-03-26</p>
+  </div>
+
+</div>
+
+</body>
+</html>
