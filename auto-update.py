@@ -176,6 +176,84 @@ def git_push(commit_msg):
         return False
 
 # ============================================================================
+# 翻译功能（英文 → 中文）
+# ============================================================================
+
+def translate_text(text, max_retries=2):
+    """使用 Google Translate 免费 API 将英文翻译为中文"""
+    if not text or not text.strip():
+        return text
+
+    # 跳过已经是中文为主的文本
+    chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    if chinese_chars > len(text) * 0.3:
+        return text
+
+    for attempt in range(max_retries + 1):
+        try:
+            import urllib.parse
+            encoded = urllib.parse.quote(text[:2000])  # 限制长度
+            url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q={encoded}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                result = json.loads(resp.read().decode())
+                translated = "".join(part[0] for part in result[0] if part[0])
+                return translated
+        except Exception as e:
+            if attempt == max_retries:
+                log(f"⚠️  翻译失败，使用原文: {str(e)[:50]}")
+                return text
+            import time
+            time.sleep(1)
+    return text
+
+
+def translate_feed_data(tweets_data, podcasts_data, blogs_data):
+    """批量翻译 feed 数据中的英文内容为中文"""
+    log("🌐 正在翻译英文内容为中文...")
+    translated_count = 0
+
+    # 翻译推文
+    for builder in (tweets_data or []):
+        # 翻译 bio
+        bio = builder.get("bio", "")
+        if bio:
+            builder["bio"] = translate_text(bio)
+            translated_count += 1
+
+        for tweet in builder.get("tweets", []):
+            text = tweet.get("text", "")
+            if text:
+                tweet["text"] = translate_text(text)
+                translated_count += 1
+
+    # 翻译播客
+    for pod in (podcasts_data or []):
+        title = pod.get("title", "")
+        if title:
+            pod["title"] = translate_text(title)
+            translated_count += 1
+        summary = pod.get("summary", "")
+        if summary:
+            pod["summary"] = translate_text(summary)
+            translated_count += 1
+
+    # 翻译博客
+    for blog in (blogs_data or []):
+        title = blog.get("title", "")
+        if title:
+            blog["title"] = translate_text(title)
+            translated_count += 1
+        summary = blog.get("summary", "")
+        if summary:
+            blog["summary"] = translate_text(summary)
+            translated_count += 1
+
+    log(f"✅ 翻译完成，共翻译 {translated_count} 段内容")
+    return tweets_data, podcasts_data, blogs_data
+
+
+# ============================================================================
 # 过滤最近24小时的内容
 # ============================================================================
 
@@ -790,6 +868,9 @@ def main():
     blogs_data = filter_recent(blogs_all, lookback)
 
     log(f"🔍 过滤后（{period_desc}）: {len(tweets_data)} builders, {len(podcasts_data)} podcasts, {len(blogs_data)} blogs")
+
+    # Step 1.5: 翻译英文内容为中文
+    tweets_data, podcasts_data, blogs_data = translate_feed_data(tweets_data, podcasts_data, blogs_data)
 
     # Step 2: 生成 HTML
     log("🎨 正在生成 HTML 页面...")
